@@ -16,6 +16,44 @@ LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
 1 ICON "res/Icon_1.ico"
 
 //////////////////////////////////////////////////////////////////////////////
+// RT_VERSION
+
+1 VERSIONINFO
+FILEVERSION     0, 3, 0, 0
+PRODUCTVERSION  0, 3, 0, 0
+FILEOS          0x40004
+FILETYPE        0x1
+{
+    BLOCK "StringFileInfo"
+    {
+        BLOCK "041104B0"
+        {
+            VALUE "CompanyName", "片山博文MZ\0"
+            VALUE "FileDescription", "ストップウォッチ兼タイマー\0"
+            VALUE "FileVersion", "0.3\0"
+            VALUE "InternalName", "mztimer\0"
+            VALUE "LegalCopyright", "(C) 片山博文MZ. All rights reserved.\0"
+            VALUE "OriginalFilename", "mztimer.exe\0"
+            VALUE "ProductName", "ストップウォッチ兼タイマー\0"
+            VALUE "ProductVersion", "0.3\0"
+        }
+        BLOCK "041004E4"
+        {
+            VALUE "CompanyName", "Katayama Hirofumi MZ\0"
+            VALUE "FileDescription", "Stopwatch and Timer\0"
+            VALUE "FileVersion", "0.3\0"
+            VALUE "LegalCopyright", "(C) katahiromz. All rights reserved.\0"
+            VALUE "ProductName", "Stopwatch and Timer\0"
+            VALUE "ProductVersion", "0.3\0"
+        }
+    }
+    BLOCK "VarFileInfo"
+    {
+        VALUE "Translation", 0x0409, 0x04E4
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////
 // RT_MANIFEST
 
 #ifndef MSVC

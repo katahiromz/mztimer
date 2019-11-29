@@ -1,40 +1,40 @@
+// MZ Timer --- Stopwatch and Timer by katahiromz
+// License: MIT
 #include <windows.h>
+#include <windowsx.h>
 #include <commctrl.h>
 #include <tchar.h>
 #include <stdlib.h>
 
-HINSTANCE g_hInstance;
-HWND g_hMainWnd;
-LARGE_INTEGER g_freq;
-LARGE_INTEGER g_now;
-LARGE_INTEGER g_start;
-LARGE_INTEGER g_stop;
-LARGE_INTEGER g_deltamsec;
+#define BLACK_COLOR     RGB(0, 0, 0)
+#define RED_COLOR       RGB(255, 96, 96)
 
-BOOL g_fRunning = TRUE;
-BOOL g_fStopWatch = TRUE;
-BOOL g_fStopped = FALSE;
-BOOL g_fAlert = FALSE;
-BOOL g_fFlash = FALSE;
-HWND g_hEdit1;
-HWND g_hEdit2;
-HWND g_hEdit3;
-HWND g_hEdit4;
+HINSTANCE g_hInstance;              // the main instance
+HWND g_hMainWnd;                    // the main window handle
 
-const COLORREF g_rgbRed = RGB(255, 96, 96);
-HBRUSH g_hbrRed;
+static LARGE_INTEGER s_freq;        // performance counter frequency
+static LARGE_INTEGER s_now;         // performance counter of now
+static LARGE_INTEGER s_start;       // performance counter of starting point
+static LARGE_INTEGER s_stop;        // performance counter of ending point
+static LARGE_INTEGER s_deltamsec;   // time amount in milliseconds
 
-TCHAR g_sz[32];
+static BOOL s_fRunning = TRUE;      // is it running?
+static BOOL s_fStopWatch = TRUE;    // is it a stopwatch?
+static BOOL s_fStopped = FALSE;     // is it stopped?
+static BOOL s_fAlert = FALSE;       // is it alerming?
+static BOOL s_fFlash = FALSE;       // is it flashing?
+static HWND s_hEdt1;                // text box (EDIT control) 1
+static HWND s_hEdt2;                // text box (EDIT control) 2
+static HWND s_hEdt3;                // text box (EDIT control) 3
+static HWND s_hEdt4;                // text box (EDIT control) 4
+static HBRUSH s_hbrRed;             // red brush
 
-DWORD g_count;
-DWORD g_hour, g_min, g_sec, g_msec;
+static DWORD s_hour;    // hours
+static DWORD s_min;     // minutes
+static DWORD s_sec;     // seconds
+static DWORD s_msec;    // milliseconds
 
-static const TCHAR g_sz0[] = TEXT("0");
-static const TCHAR g_sz00[] = TEXT("00");
-static const TCHAR g_sz000[] = TEXT("000");
-
-
-LPTSTR LoadStringDx(INT ids)
+inline LPTSTR LoadStringDx(INT ids)
 {
     static TCHAR sz[256];
     LoadString(g_hInstance, ids, sz, 256);
@@ -43,84 +43,92 @@ LPTSTR LoadStringDx(INT ids)
 
 inline VOID SetWindowInt02(HWND hWnd, INT n)
 {
-    g_sz[0] = (TCHAR)('0' + n / 10 % 10);
-    g_sz[1] = (TCHAR)('0' + n % 10);
-    g_sz[2] = (TCHAR)0;
-    SetWindowText(hWnd, g_sz);
+    TCHAR szBuf[32];
+    szBuf[0] = TCHAR('0' + n / 10 % 10);
+    szBuf[1] = TCHAR('0' + n % 10);
+    szBuf[2] = 0;
+    SetWindowText(hWnd, szBuf);
 }
 
 inline VOID SetWindowInt03(HWND hWnd, INT n)
 {
-    g_sz[0] = (TCHAR)('0' + n / 100 % 10);
-    g_sz[1] = (TCHAR)('0' + n / 10 % 10);
-    g_sz[2] = (TCHAR)('0' + n % 10);
-    g_sz[3] = (TCHAR)0;
-    SetWindowText(hWnd, g_sz);
+    TCHAR szBuf[32];
+    szBuf[0] = TCHAR('0' + n / 100 % 10);
+    szBuf[1] = TCHAR('0' + n / 10 % 10);
+    szBuf[2] = TCHAR('0' + n % 10);
+    szBuf[3] = 0;
+    SetWindowText(hWnd, szBuf);
 }
 
-inline VOID Alert(HWND hDlg)
+inline VOID Alert(HWND hwnd)
 {
-    KillTimer(hDlg, 999);
-    SetWindowText(g_hEdit1, g_sz0);
-    SetWindowText(g_hEdit2, g_sz00);
-    SetWindowText(g_hEdit3, g_sz00);
-    SetWindowText(g_hEdit4, g_sz000);
+    KillTimer(hwnd, 999);
+    SetWindowText(s_hEdt1, TEXT("0"));
+    SetWindowText(s_hEdt2, TEXT("00"));
+    SetWindowText(s_hEdt3, TEXT("00"));
+    SetWindowText(s_hEdt4, TEXT("000"));
     PlaySound(LoadStringDx(2), NULL, SND_ASYNC | SND_FILENAME | SND_LOOP);
-    FlashWindow(hDlg, TRUE);
-    ShowWindow(hDlg, SW_SHOWNORMAL);
-    SendMessage(hDlg, DM_REPOSITION, 0, 0);
-    g_fAlert = TRUE;
-    g_fFlash = TRUE;
-    SetTimer(hDlg, 999, 250, NULL);
-    InvalidateRect(hDlg, NULL, TRUE);
+    FlashWindow(hwnd, TRUE);
+    ShowWindow(hwnd, SW_SHOWNORMAL);
+    SendMessage(hwnd, DM_REPOSITION, 0, 0);
+    s_fAlert = TRUE;
+    s_fFlash = TRUE;
+    SetTimer(hwnd, 999, 250, NULL);
+    InvalidateRect(hwnd, NULL, TRUE);
 }
 
-VOID Update(HWND hDlg)
+VOID Update(HWND hwnd)
 {
     DWORD hour, min, sec, msec;
-    QueryPerformanceCounter(&g_now);
-    if (g_fStopWatch)
+    DWORD count;
+
+    QueryPerformanceCounter(&s_now);
+    if (s_fStopWatch)
     {
-        g_count = (DWORD)(((g_now.QuadPart - g_start.QuadPart) * 1000) / 
-                          g_freq.QuadPart + g_deltamsec.QuadPart);
-        hour = g_count / (1000 * 60 * 60);
-        min = g_count / (1000 * 60) % 60;
-        sec = g_count / 1000 % 60;
-        msec = g_count % 1000;
-        _ultot(hour, g_sz, 10);
-        SetWindowText(g_hEdit1, g_sz);
-        SetWindowInt02(g_hEdit2, min);
-        SetWindowInt02(g_hEdit3, sec);
-        SetWindowInt03(g_hEdit4, msec);
+        count = DWORD(((s_now.QuadPart - s_start.QuadPart) * 1000) / 
+                         s_freq.QuadPart + s_deltamsec.QuadPart);
+        hour = count / (1000 * 60 * 60);
+        min = count / (1000 * 60) % 60;
+        sec = count / 1000 % 60;
+        msec = count % 1000;
+
+        TCHAR szBuf[32];
+        _ultot(hour, szBuf, 10);
+        SetWindowText(s_hEdt1, szBuf);
+        SetWindowInt02(s_hEdt2, min);
+        SetWindowInt02(s_hEdt3, sec);
+        SetWindowInt03(s_hEdt4, msec);
     }
     else
     {
-        if (g_stop.QuadPart * 1000 < g_now.QuadPart * 1000 - 
-                                     g_deltamsec.QuadPart)
+        if (s_stop.QuadPart * 1000 < s_now.QuadPart * 1000 - 
+                                     s_deltamsec.QuadPart)
         {
-            Alert(hDlg);
+            Alert(hwnd);
             return;
         }
-        g_count = (DWORD)(((g_stop.QuadPart - g_now.QuadPart) * 1000 + 
-                           g_deltamsec.QuadPart) / g_freq.QuadPart);
-        hour = g_count / (1000 * 60 * 60);
-        min = g_count / (1000 * 60) % 60;
-        sec = g_count / 1000 % 60;
-        msec = g_count % 1000;
-        _ultot(hour, g_sz, 10);
-        SetWindowText(g_hEdit1, g_sz);
-        SetWindowInt02(g_hEdit2, min);
-        SetWindowInt02(g_hEdit3, sec);
-        SetWindowInt03(g_hEdit4, msec);
+        count = DWORD(((s_stop.QuadPart - s_now.QuadPart) * 1000 + 
+                          s_deltamsec.QuadPart) / s_freq.QuadPart);
+        hour = count / (1000 * 60 * 60);
+        min = count / (1000 * 60) % 60;
+        sec = count / 1000 % 60;
+        msec = count % 1000;
+
+        TCHAR szBuf[32];
+        _ultot(hour, szBuf, 10);
+        SetWindowText(s_hEdt1, szBuf);
+        SetWindowInt02(s_hEdt2, min);
+        SetWindowInt02(s_hEdt3, sec);
+        SetWindowInt03(s_hEdt4, msec);
     }
 }
 
 VOID SetReadOnly(BOOL fReadOnly)
 {
-    SendMessage(g_hEdit1, EM_SETREADONLY, fReadOnly, 0);
-    SendMessage(g_hEdit2, EM_SETREADONLY, fReadOnly, 0);
-    SendMessage(g_hEdit3, EM_SETREADONLY, fReadOnly, 0);
-    SendMessage(g_hEdit4, EM_SETREADONLY, fReadOnly, 0);
+    SendMessage(s_hEdt1, EM_SETREADONLY, fReadOnly, 0);
+    SendMessage(s_hEdt2, EM_SETREADONLY, fReadOnly, 0);
+    SendMessage(s_hEdt3, EM_SETREADONLY, fReadOnly, 0);
+    SendMessage(s_hEdt4, EM_SETREADONLY, fReadOnly, 0);
     EnableWindow(GetDlgItem(g_hMainWnd, 1000), !fReadOnly);
     EnableWindow(GetDlgItem(g_hMainWnd, 1001), !fReadOnly);
     EnableWindow(GetDlgItem(g_hMainWnd, 1002), !fReadOnly);
@@ -128,179 +136,204 @@ VOID SetReadOnly(BOOL fReadOnly)
     EnableWindow(GetDlgItem(g_hMainWnd, psh1), !fReadOnly);
 }
 
-BOOL CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+inline BOOL OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 {
-    LARGE_INTEGER li;
+    g_hMainWnd = hwnd;
+    s_hEdt1 = GetDlgItem(hwnd, edt1);
+    s_hEdt2 = GetDlgItem(hwnd, edt2);
+    s_hEdt3 = GetDlgItem(hwnd, edt3);
+    s_hEdt4 = GetDlgItem(hwnd, edt4);
+    SendDlgItemMessage(hwnd, 1000, UDM_SETRANGE, 0, MAKELPARAM(99, 0));
+    SendDlgItemMessage(hwnd, 1001, UDM_SETRANGE, 0, MAKELPARAM(99, 0));
+    SendDlgItemMessage(hwnd, 1002, UDM_SETRANGE, 0, MAKELPARAM(99, 0));
+    SendDlgItemMessage(hwnd, 1003, UDM_SETRANGE, 0, MAKELPARAM(999, 0));
+    HICON hIcon = LoadIcon(g_hInstance, MAKEINTRESOURCE(1));
+    HICON hIconSmall = reinterpret_cast<HICON>(LoadImage(
+        g_hInstance, 
+        MAKEINTRESOURCE(1),
+        IMAGE_ICON, 
+        GetSystemMetrics(SM_CXSMICON), 
+        GetSystemMetrics(SM_CYSMICON),
+        NULL));
+    SendMessage(hwnd, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(hIcon));
+    SendMessage(hwnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(hIconSmall));
+    s_hbrRed = CreateSolidBrush(RED_COLOR);
+    s_fRunning = FALSE;
+    return TRUE;
+}
+
+inline void OnPsh1(HWND hwnd)
+{
     DWORD hour, min, sec, msec;
-    HICON hIcon, hIconSmall;
+    LARGE_INTEGER li;
 
-    switch(uMsg)
+    if (!s_fRunning)
     {
-    case WM_INITDIALOG:
-        g_hMainWnd = hDlg;
-        g_hEdit1 = GetDlgItem(hDlg, edt1);
-        g_hEdit2 = GetDlgItem(hDlg, edt2);
-        g_hEdit3 = GetDlgItem(hDlg, edt3);
-        g_hEdit4 = GetDlgItem(hDlg, edt4);
-        SendDlgItemMessage(hDlg, 1000, UDM_SETRANGE, 0, MAKELPARAM(99, 0));
-        SendDlgItemMessage(hDlg, 1001, UDM_SETRANGE, 0, MAKELPARAM(99, 0));
-        SendDlgItemMessage(hDlg, 1002, UDM_SETRANGE, 0, MAKELPARAM(99, 0));
-        SendDlgItemMessage(hDlg, 1003, UDM_SETRANGE, 0, MAKELPARAM(999, 0));
-        hIcon = LoadIcon(g_hInstance, MAKEINTRESOURCE(1));
-        hIconSmall = (HICON)LoadImage(
-            g_hInstance, 
-            MAKEINTRESOURCE(1),
-            IMAGE_ICON, 
-            GetSystemMetrics(SM_CXSMICON), 
-            GetSystemMetrics(SM_CYSMICON),
-            NULL);
-        SendMessage(hDlg, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
-        SendMessage(hDlg, WM_SETICON, ICON_SMALL, (LPARAM)hIconSmall);
-        g_hbrRed = CreateSolidBrush(g_rgbRed);
-        g_fRunning = FALSE;
-        break;
-
-    case WM_COMMAND:
-        switch(LOWORD(wParam))
+        QueryPerformanceCounter(&s_start);
+        if (s_fStopped)
         {
-        case psh1:
-            if (!g_fRunning)
-            {
-                QueryPerformanceCounter(&g_start);
-                if (g_fStopped)
-                {
-                    hour = GetDlgItemInt(hDlg, edt1, NULL, FALSE);
-                    min = GetDlgItemInt(hDlg, edt2, NULL, FALSE);
-                    sec = GetDlgItemInt(hDlg, edt3, NULL, FALSE);
-                    msec = GetDlgItemInt(hDlg, edt4, NULL, FALSE);
-                    g_deltamsec.QuadPart = ((hour * 60 + min) * 60 + sec);
-                    g_deltamsec.QuadPart *= 1000;
-                    g_deltamsec.QuadPart += msec;
-                }
-                else
-                {
-                    g_deltamsec.QuadPart = 0;
-                }
-                if (!g_fStopWatch)
-                {
-                    if (GetDlgItemInt(hDlg, edt1, NULL, FALSE) == 0 &&
-                        GetDlgItemInt(hDlg, edt2, NULL, FALSE) == 0 &&
-                        GetDlgItemInt(hDlg, edt3, NULL, FALSE) == 0 &&
-                        GetDlgItemInt(hDlg, edt4, NULL, FALSE) == 0)
-                    {
-                        g_fStopWatch = TRUE;
-                    }
-                }
-                if (!g_fStopWatch)
-                {
-                    hour = GetDlgItemInt(hDlg, edt1, NULL, FALSE);
-                    min = GetDlgItemInt(hDlg, edt2, NULL, FALSE);
-                    sec = GetDlgItemInt(hDlg, edt3, NULL, FALSE);
-                    msec = GetDlgItemInt(hDlg, edt4, NULL, FALSE);
-                    li.QuadPart = ((hour * 60 + min) * 60 + sec);
-                    li.QuadPart *= 1000;
-                    li.QuadPart += msec;
-                    g_stop.QuadPart = g_start.QuadPart + 
-                                      li.QuadPart * g_freq.QuadPart / 1000;
-                    if (!g_fStopped)
-                    {
-                        g_hour = hour;
-                        g_min = min;
-                        g_sec = sec;
-                        g_msec = msec;
-                    }
-                }
-                g_fRunning = TRUE;
-                SetReadOnly(TRUE);
-                MessageBeep(0xFFFFFFFF);
-                SetTimer(hDlg, 999, 90, NULL);
-            }
-            break;
-
-        case psh2:
-            MessageBeep(0xFFFFFFFF);
-            if (g_fRunning)
-            {
-                KillTimer(hDlg, 999);
-                Update(hDlg);
-                SetReadOnly(FALSE);
-                if (!g_fStopWatch && g_fAlert)
-                {
-                    SetDlgItemInt(hDlg, edt1, g_hour, FALSE);
-                    SetDlgItemInt(hDlg, edt2, g_min, FALSE);
-                    SetDlgItemInt(hDlg, edt3, g_sec, FALSE);
-                    SetDlgItemInt(hDlg, edt4, g_msec, FALSE);
-                }
-                g_fRunning = FALSE;
-                g_fStopped = TRUE;
-            }
-            else
-            {
-                SetWindowText(g_hEdit1, g_sz0);
-                SetWindowText(g_hEdit2, g_sz00);
-                SetWindowText(g_hEdit3, g_sz00);
-                SetWindowText(g_hEdit4, g_sz000);
-                g_fStopWatch = TRUE;
-                g_fStopped = FALSE;
-            }
-            InvalidateRect(hDlg, NULL, TRUE);
-            g_fAlert = FALSE;
-            KillTimer(hDlg, 999);
-            PlaySound(NULL, NULL, 0);
-            break;
-
-        case edt1:
-        case edt2:
-        case edt3:
-        case edt4:
-            if (!g_fRunning && HIWORD(wParam) == EN_CHANGE)
-            {
-                g_fStopWatch = FALSE;
-                g_fStopped = FALSE;
-            }
-            break;
-
-        case IDCANCEL:
-            EndDialog(hDlg, IDCANCEL);
-            break;
-        }
-        break;
-
-    case WM_CTLCOLORDLG:
-    case WM_CTLCOLORSTATIC:
-        if (g_fAlert && g_fFlash)
-        {
-            SetTextColor((HDC)wParam, RGB(0, 0, 0));
-            SetBkColor((HDC)wParam, g_rgbRed);
-            return (BOOL)g_hbrRed;
-        }
-        break;
-
-    case WM_TIMER:
-        if (!g_fAlert)
-        {
-            Update(hDlg);
+            hour = GetDlgItemInt(hwnd, edt1, NULL, FALSE);
+            min = GetDlgItemInt(hwnd, edt2, NULL, FALSE);
+            sec = GetDlgItemInt(hwnd, edt3, NULL, FALSE);
+            msec = GetDlgItemInt(hwnd, edt4, NULL, FALSE);
+            s_deltamsec.QuadPart = ((hour * 60 + min) * 60 + sec);
+            s_deltamsec.QuadPart *= 1000;
+            s_deltamsec.QuadPart += msec;
         }
         else
         {
-            g_fFlash = !g_fFlash;
-            InvalidateRect(hDlg, NULL, TRUE);
+            s_deltamsec.QuadPart = 0;
         }
-        break;
+        if (!s_fStopWatch)
+        {
+            if (GetDlgItemInt(hwnd, edt1, NULL, FALSE) == 0 &&
+                GetDlgItemInt(hwnd, edt2, NULL, FALSE) == 0 &&
+                GetDlgItemInt(hwnd, edt3, NULL, FALSE) == 0 &&
+                GetDlgItemInt(hwnd, edt4, NULL, FALSE) == 0)
+            {
+                s_fStopWatch = TRUE;
+            }
+        }
+        if (!s_fStopWatch)
+        {
+            hour = GetDlgItemInt(hwnd, edt1, NULL, FALSE);
+            min = GetDlgItemInt(hwnd, edt2, NULL, FALSE);
+            sec = GetDlgItemInt(hwnd, edt3, NULL, FALSE);
+            msec = GetDlgItemInt(hwnd, edt4, NULL, FALSE);
+            li.QuadPart = ((hour * 60 + min) * 60 + sec);
+            li.QuadPart *= 1000;
+            li.QuadPart += msec;
+            s_stop.QuadPart = s_start.QuadPart + 
+                              li.QuadPart * s_freq.QuadPart / 1000;
+            if (!s_fStopped)
+            {
+                s_hour = hour;
+                s_min = min;
+                s_sec = sec;
+                s_msec = msec;
+            }
+        }
+        s_fRunning = TRUE;
+        SetReadOnly(TRUE);
+        MessageBeep(0xFFFFFFFF);
+        SetTimer(hwnd, 999, 90, NULL);
     }
-    return FALSE;
 }
 
-INT WINAPI WinMain(
-    HINSTANCE   hInstance,
-    HINSTANCE   hPrevInstance,
-    LPSTR       pszCmdLine,
-    INT         nCmdShow)
+inline void OnPsh2(HWND hwnd)
+{
+    MessageBeep(0xFFFFFFFF);
+    if (s_fRunning)
+    {
+        KillTimer(hwnd, 999);
+        Update(hwnd);
+        SetReadOnly(FALSE);
+        if (!s_fStopWatch && s_fAlert)
+        {
+            SetDlgItemInt(hwnd, edt1, s_hour, FALSE);
+            SetDlgItemInt(hwnd, edt2, s_min, FALSE);
+            SetDlgItemInt(hwnd, edt3, s_sec, FALSE);
+            SetDlgItemInt(hwnd, edt4, s_msec, FALSE);
+        }
+        s_fRunning = FALSE;
+        s_fStopped = TRUE;
+    }
+    else
+    {
+        SetWindowText(s_hEdt1, TEXT("0"));
+        SetWindowText(s_hEdt2, TEXT("00"));
+        SetWindowText(s_hEdt3, TEXT("00"));
+        SetWindowText(s_hEdt4, TEXT("000"));
+        s_fStopWatch = TRUE;
+        s_fStopped = FALSE;
+    }
+    InvalidateRect(hwnd, NULL, TRUE);
+    s_fAlert = FALSE;
+    KillTimer(hwnd, 999);
+    PlaySound(NULL, NULL, 0);
+}
+
+inline void OnEdt1to4(HWND hwnd, UINT codeNotify)
+{
+    if (!s_fRunning && codeNotify == EN_CHANGE)
+    {
+        s_fStopWatch = FALSE;
+        s_fStopped = FALSE;
+    }
+}
+
+inline void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
+{
+    switch (id)
+    {
+    case psh1:
+        OnPsh1(hwnd);
+        break;
+
+    case psh2:
+        OnPsh2(hwnd);
+        break;
+
+    case edt1:
+    case edt2:
+    case edt3:
+    case edt4:
+        OnEdt1to4(hwnd, codeNotify);
+        break;
+
+    case IDCANCEL:
+        EndDialog(hwnd, id);
+        break;
+    }
+}
+
+inline HBRUSH OnCtlColor(HWND hwnd, HDC hdc, HWND hwndChild, int type)
+{
+    if (s_fAlert && s_fFlash)
+    {
+        SetTextColor(hdc, BLACK_COLOR);
+        SetBkColor(hdc, RED_COLOR);
+        return s_hbrRed;
+    }
+    return NULL;
+}
+
+inline void OnTimer(HWND hwnd, UINT id)
+{
+    if (!s_fAlert)
+    {
+        Update(hwnd);
+    }
+    else
+    {
+        s_fFlash = !s_fFlash;
+        InvalidateRect(hwnd, NULL, TRUE);
+    }
+}
+
+INT_PTR CALLBACK DialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch(uMsg)
+    {
+        HANDLE_MSG(hwnd, WM_INITDIALOG, OnInitDialog);
+        HANDLE_MSG(hwnd, WM_COMMAND, OnCommand);
+        HANDLE_MSG(hwnd, WM_CTLCOLORDLG, OnCtlColor);
+        HANDLE_MSG(hwnd, WM_TIMER, OnTimer);
+    }
+    return 0;
+}
+
+extern "C"
+INT WINAPI
+WinMain(HINSTANCE   hInstance,
+        HINSTANCE   hPrevInstance,
+        LPSTR       pszCmdLine,
+        INT         nCmdShow)
 {
     g_hInstance = hInstance;
     InitCommonControls();
 
-    if (QueryPerformanceFrequency(&g_freq))
+    if (QueryPerformanceFrequency(&s_freq))
     {
         DialogBox(hInstance, MAKEINTRESOURCE(1), NULL, DialogProc);
     }
