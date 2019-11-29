@@ -1,10 +1,10 @@
 // MZ Timer --- Stopwatch and Timer by katahiromz
 // License: MIT
-#include <windows.h>
-#include <windowsx.h>
-#include <commctrl.h>
-#include <tchar.h>
-#include <stdlib.h>
+#include <windows.h>    // Windows API
+#include <windowsx.h>   // Windows macro API
+#include <commctrl.h>   // Common Controls
+#include <tchar.h>      // Generic Text API
+#include <cstdlib>      // C/C++ standard library
 
 #define BLACK_COLOR     RGB(0, 0, 0)
 #define RED_COLOR       RGB(255, 96, 96)
@@ -110,14 +110,20 @@ VOID UpdateControls(HWND hwnd)
     if (s_fStopWatch)
     {
         // in stopwatch mode: update the dialog controls
+
+        // the elapsed time
         count = DWORD(((s_now.QuadPart - s_start.QuadPart) * 1000) / 
                       s_freq.QuadPart + s_deltamsec.QuadPart);
+
         hour = count / (1000 * 60 * 60);
         min = count / (1000 * 60) % 60;
         sec = count / 1000 % 60;
         msec = count % 1000;
 
+        // convert hour to string
         _ultot(hour, szBuf, 10);
+
+        // set the window texts
         SetWindowText(s_hEdt1, szBuf);
         SetWindowInt02(s_hEdt2, min);
         SetWindowInt02(s_hEdt3, sec);
@@ -129,18 +135,24 @@ VOID UpdateControls(HWND hwnd)
         if (s_stop.QuadPart * 1000 < s_now.QuadPart * 1000 - 
                                      s_deltamsec.QuadPart)
         {
+            // time has come! alert!
             Alert(hwnd);
             return;
         }
+
+        // the remaining time
         count = DWORD(((s_stop.QuadPart - s_now.QuadPart) * 1000 + 
                        s_deltamsec.QuadPart) / s_freq.QuadPart);
+
         hour = count / (1000 * 60 * 60);
         min = count / (1000 * 60) % 60;
         sec = count / 1000 % 60;
         msec = count % 1000;
 
+        // convert hour to string
         _ultot(hour, szBuf, 10);
 
+        // set the window texts
         SetWindowText(s_hEdt1, szBuf);
         SetWindowInt02(s_hEdt2, min);
         SetWindowInt02(s_hEdt3, sec);
