@@ -34,7 +34,7 @@ FONT 13, "Tahoma"
 
 STRINGTABLE
 {
-    1, "This program is not available because your PC don't have performance counter."
+    1, "This program is not available because your PC doesn't have performance counter."
     2, "alerm.wav"
     3, "%u hour %u min %u sec %u msec"
 }
