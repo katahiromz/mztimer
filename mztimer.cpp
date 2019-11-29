@@ -1,6 +1,5 @@
 #include <windows.h>
 #include <commctrl.h>
-#include <dlgs.h>
 #include <tchar.h>
 #include <stdlib.h>
 
