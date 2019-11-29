@@ -9,7 +9,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
 // RT_DIALOG
 
 1 DIALOG 0, 0, 205, 45
-CAPTION "Stopwatch and Timer ver. 0.3 by katahiromz"
+CAPTION "Stopwatch and Timer ver.0.4 by katahiromz"
 STYLE DS_CENTER | DS_MODALFRAME | WS_POPUPWINDOW | WS_CAPTION | WS_MINIMIZEBOX
 FONT 13, "Tahoma"
 {

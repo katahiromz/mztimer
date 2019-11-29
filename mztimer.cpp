@@ -60,9 +60,12 @@ inline VOID SetWindowInt03(HWND hWnd, INT n)
     SetWindowText(hWnd, szBuf);
 }
 
+#define TIMER_ID 999
+#define TIMER_INTERVAL 20
+
 inline VOID Alert(HWND hwnd)
 {
-    KillTimer(hwnd, 999);
+    KillTimer(hwnd, TIMER_ID);
     SetWindowText(s_hEdt1, TEXT("0"));
     SetWindowText(s_hEdt2, TEXT("00"));
     SetWindowText(s_hEdt3, TEXT("00"));
@@ -73,7 +76,7 @@ inline VOID Alert(HWND hwnd)
     SendMessage(hwnd, DM_REPOSITION, 0, 0);
     s_fAlert = TRUE;
     s_fFlash = TRUE;
-    SetTimer(hwnd, 999, 250, NULL);
+    SetTimer(hwnd, TIMER_ID, TIMER_INTERVAL, NULL);
     InvalidateRect(hwnd, NULL, TRUE);
 }
 
@@ -216,7 +219,7 @@ inline void OnPsh1(HWND hwnd)
         s_fRunning = TRUE;
         SetReadOnly(TRUE);
         MessageBeep(0xFFFFFFFF);
-        SetTimer(hwnd, 999, 90, NULL);
+        SetTimer(hwnd, TIMER_ID, 90, NULL);
     }
 }
 
@@ -225,7 +228,7 @@ inline void OnPsh2(HWND hwnd)
     MessageBeep(0xFFFFFFFF);
     if (s_fRunning)
     {
-        KillTimer(hwnd, 999);
+        KillTimer(hwnd, TIMER_ID);
         Update(hwnd);
         SetReadOnly(FALSE);
         if (!s_fStopWatch && s_fAlert)
@@ -249,7 +252,7 @@ inline void OnPsh2(HWND hwnd)
     }
     InvalidateRect(hwnd, NULL, TRUE);
     s_fAlert = FALSE;
-    KillTimer(hwnd, 999);
+    KillTimer(hwnd, TIMER_ID);
     PlaySound(NULL, NULL, 0);
 }
 
