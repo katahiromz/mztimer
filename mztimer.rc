@@ -1,0 +1,62 @@
+#include <windows.h>
+#include <dlgs.h>
+
+1 24 "mztimer.exe.manifest"
+
+1 ICON "mztimer.ico"
+
+LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
+
+STRINGTABLE
+{
+    1, "お使いのパソコンでは、高精度パフォーマンスカウンタが使えないため、このプログラムは使用できません。"
+    2, "alerm.wav"
+    3, "%u時間%u分%u秒%uミリ秒"
+}
+
+1 DIALOG 0, 0, 205, 45
+STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_MINIMIZEBOX | WS_CAPTION | WS_SYSMENU
+CAPTION "ストップウォッチ兼タイマー ver. 0.1 by 片山博文MZ"
+FONT 14, "ＭＳ Ｐゴシック"
+{
+   CONTROL "00", edt1, EDIT, ES_RIGHT | ES_NUMBER | ES_AUTOHSCROLL | WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP, 5, 5, 15, 14 
+   CONTROL "", 1000, "msctls_updown32", UDS_AUTOBUDDY | UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS | WS_CHILD | WS_VISIBLE, 20, 5, 5, 14 
+   CONTROL "時間", -1, STATIC, SS_LEFT | WS_CHILD | WS_VISIBLE | WS_GROUP, 35, 7, 20, 12 
+   CONTROL "00", edt2, EDIT, ES_RIGHT | ES_NUMBER | ES_AUTOHSCROLL | WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP, 55, 5, 15, 14 
+   CONTROL "", 1001, "msctls_updown32", UDS_AUTOBUDDY | UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS | WS_CHILD | WS_VISIBLE, 70, 5, 5, 14 
+   CONTROL "分", -1, STATIC, SS_LEFT | WS_CHILD | WS_VISIBLE | WS_GROUP, 85, 7, 10, 12 
+   CONTROL "00", edt3, EDIT, ES_RIGHT | ES_NUMBER | ES_AUTOHSCROLL | WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP, 100, 5, 15, 14 
+   CONTROL "", 1002, "msctls_updown32", UDS_AUTOBUDDY | UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS | WS_CHILD | WS_VISIBLE, 115, 5, 5, 14 
+   CONTROL "秒", -1, STATIC, SS_LEFT | WS_CHILD | WS_VISIBLE | WS_GROUP, 130, 7, 10, 12 
+   CONTROL "000", edt4, EDIT, ES_RIGHT | ES_NUMBER | ES_AUTOHSCROLL | WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP, 145, 5, 20, 14 
+   CONTROL "", 1003, "msctls_updown32", UDS_AUTOBUDDY | UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS | WS_CHILD | WS_VISIBLE, 165, 5, 5, 14 
+   CONTROL "ミリ秒", -1, STATIC, SS_LEFT | WS_CHILD | WS_VISIBLE | WS_GROUP, 180, 7, 20, 12 
+   CONTROL "スタート(&S)", psh1, BUTTON, BS_PUSHBUTTON | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 50, 25, 60, 14 
+   CONTROL "ストップ／リセット(&T)", psh2, BUTTON, BS_PUSHBUTTON | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 115, 25, 80, 14 
+}
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     0,1,0,0
+PRODUCTVERSION  0,1,0,0
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+{
+    BLOCK "StringFileInfo"
+    {
+        BLOCK "041104B0"
+        {
+            VALUE "CompanyName", "片山博文MZ\0"
+            VALUE "FileDescription", "ストップウォッチ兼タイマー\0"
+            VALUE "FileVersion", "0.1\0"
+            VALUE "InternalName", "mztimer\0"
+            VALUE "LegalCopyright", "(C) 片山博文MZ. All rights reserved.\0"
+            VALUE "OriginalFilename", "mztimer.exe\0"
+            VALUE "ProductName", "ストップウォッチ兼タイマー\0"
+            VALUE "ProductVersion", "0.1\0"
+        }
+    }
+    BLOCK "VarFileInfo"
+    {
+        VALUE "Translation", 0x0411, 0x04B0
+    }
+}

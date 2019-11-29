@@ -1,0 +1,23 @@
+# MZ Timer Makefile for gcc (MinGW or Cygwin)
+# Usage: $ make -f Makefile.gcc
+
+ifdef DEBUG
+	CFLAGS = -DDEBUG -g
+else
+	CFLAGS = -O2
+endif
+
+OBJS = mztimer.o mztimer_rc.o
+
+all: mztimer.exe
+
+mztimer.exe: $(OBJS)
+	g++ -mwindows $(CFLAGS) -o mztimer.exe $(OBJS)
+
+mztimer.o: mztimer.cpp
+	g++ -c $(CFLAGS) -o mztimer.o mztimer.cpp
+mztimer_rc.o: mztimer.rc
+	windres -i mztimer.rc -o mztimer_rc.o
+
+clean:
+	rm *.o

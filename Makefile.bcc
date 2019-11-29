@@ -1,0 +1,27 @@
+# Usage:
+# C:\dev\mztimer> make -f Makefile.bcc
+
+!ifdef DEBUG
+    CFLAGS = -D_MBCS -w -DDEBUG -v -y 
+!else
+    CFLAGS = -D_MBCS -w -O2 -X
+!endif
+
+OBJS = mztimer.obj
+
+all: mztimer.exe
+
+mztimer.exe: mztimer.rc $(OBJS)
+	bcc32 -W $(CFLAGS) -emztimer.exe $(OBJS)
+	brc32 mztimer
+
+mztimer.obj: mztimer.cpp
+	bcc32 -c $(CFLAGS) -omztimer.obj mztimer.cpp
+
+clean:
+	if exist *.obj del *.obj
+	if exist *.res del *.res
+	if exist *.tds del *.tds
+	if exist *.tr2 del *.tr2
+	if exist tdconfig.td2 del tdconfig.td2
+	if exist *.$$$ del *.$$$
