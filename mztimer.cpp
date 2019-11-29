@@ -43,7 +43,7 @@ inline LPTSTR LoadStringDx(INT ids)
 }
 
 // set 2-digit text to the window
-inline VOID SetWindowInt02(HWND hWnd, INT n)
+inline VOID DoSetWindowInt02(HWND hWnd, INT n)
 {
     TCHAR szBuf[8];
     szBuf[0] = TCHAR('0' + n / 10 % 10);
@@ -53,7 +53,7 @@ inline VOID SetWindowInt02(HWND hWnd, INT n)
 }
 
 // set 3-digit text to the window
-inline VOID SetWindowInt03(HWND hWnd, INT n)
+inline VOID DoSetWindowInt03(HWND hWnd, INT n)
 {
     TCHAR szBuf[8];
     szBuf[0] = TCHAR('0' + n / 100 % 10);
@@ -64,10 +64,10 @@ inline VOID SetWindowInt03(HWND hWnd, INT n)
 }
 
 #define TIMER_ID 999
-#define TIMER_INTERVAL 20
+#define REFRESH_INTERVAL 20
+#define ALERT_INTERVAL 100
 
-
-inline VOID Alert(HWND hwnd)
+inline VOID DoAlert(HWND hwnd)
 {
     // stop the timer
     KillTimer(hwnd, TIMER_ID);
@@ -92,13 +92,13 @@ inline VOID Alert(HWND hwnd)
     s_fFlash = TRUE;    // flashing now!
 
     // alerming by timer
-    SetTimer(hwnd, TIMER_ID, TIMER_INTERVAL, NULL);
+    SetTimer(hwnd, TIMER_ID, ALERT_INTERVAL, NULL);
 
     // redraw the window
     InvalidateRect(hwnd, NULL, TRUE);
 }
 
-VOID UpdateControls(HWND hwnd)
+VOID DoUpdateControls(HWND hwnd)
 {
     DWORD hour, min, sec, msec;
     DWORD count;
@@ -125,9 +125,9 @@ VOID UpdateControls(HWND hwnd)
 
         // set the window texts
         SetWindowText(s_hEdt1, szBuf);
-        SetWindowInt02(s_hEdt2, min);
-        SetWindowInt02(s_hEdt3, sec);
-        SetWindowInt03(s_hEdt4, msec);
+        DoSetWindowInt02(s_hEdt2, min);
+        DoSetWindowInt02(s_hEdt3, sec);
+        DoSetWindowInt03(s_hEdt4, msec);
     }
     else
     {
@@ -136,7 +136,7 @@ VOID UpdateControls(HWND hwnd)
                                      s_deltamsec.QuadPart)
         {
             // time has come! alert!
-            Alert(hwnd);
+            DoAlert(hwnd);
             return;
         }
 
@@ -154,13 +154,13 @@ VOID UpdateControls(HWND hwnd)
 
         // set the window texts
         SetWindowText(s_hEdt1, szBuf);
-        SetWindowInt02(s_hEdt2, min);
-        SetWindowInt02(s_hEdt3, sec);
-        SetWindowInt03(s_hEdt4, msec);
+        DoSetWindowInt02(s_hEdt2, min);
+        DoSetWindowInt02(s_hEdt3, sec);
+        DoSetWindowInt03(s_hEdt4, msec);
     }
 }
 
-inline VOID SetReadOnly(BOOL fReadOnly)
+inline VOID DoSetReadOnly(BOOL fReadOnly)
 {
     // make the EDIT controls (text boxes) read-only or not
     SendMessage(s_hEdt1, EM_SETREADONLY, fReadOnly, 0);
@@ -176,6 +176,7 @@ inline VOID SetReadOnly(BOOL fReadOnly)
     EnableWindow(GetDlgItem(g_hMainWnd, psh1), !fReadOnly);
 }
 
+// WM_INITDIALOG
 inline BOOL OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 {
     // get the window handles
@@ -277,9 +278,9 @@ inline void OnPsh1(HWND hwnd)
 
         // start!
         s_fRunning = TRUE;          // now running
-        SetReadOnly(TRUE);          // set read-only
+        DoSetReadOnly(TRUE);        // set read-only
         MessageBeep(0xFFFFFFFF);    // ring the bell
-        SetTimer(hwnd, TIMER_ID, TIMER_INTERVAL, NULL);
+        SetTimer(hwnd, TIMER_ID, REFRESH_INTERVAL, NULL);
     }
 }
 
@@ -291,8 +292,8 @@ inline void OnPsh2(HWND hwnd)
     {
         // stop!
         KillTimer(hwnd, TIMER_ID);  // stop the timer
-        UpdateControls(hwnd);       // update controls
-        SetReadOnly(FALSE);         // non-read-only
+        DoUpdateControls(hwnd);       // update controls
+        DoSetReadOnly(FALSE);         // non-read-only
 
         if (!s_fStopWatch && s_fAlert)
         {
@@ -338,6 +339,7 @@ inline void OnEdt1to4(HWND hwnd, UINT codeNotify)
     }
 }
 
+// WM_COMMAND
 inline void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 {
     switch (id)
@@ -365,22 +367,26 @@ inline void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 
 inline HBRUSH OnCtlColor(HWND hwnd, HDC hdc, HWND hwndChild, int type)
 {
-    // show the colors!
-    if (s_fAlert && s_fFlash)
+    if (type == CTLCOLOR_STATIC || type == CTLCOLOR_DLG)
     {
-        SetTextColor(hdc, BLACK_COLOR);
-        SetBkColor(hdc, RED_COLOR);
-        return s_hbrRed;
+        // show the colors!
+        if (s_fAlert && s_fFlash)
+        {
+            SetTextColor(hdc, BLACK_COLOR);
+            SetBkColor(hdc, RED_COLOR);
+            return s_hbrRed;
+        }
     }
     return NULL;
 }
 
+// WM_TIMER
 inline void OnTimer(HWND hwnd, UINT id)
 {
     if (!s_fAlert)
     {
         // update the controls
-        UpdateControls(hwnd);
+        DoUpdateControls(hwnd);
     }
     else
     {
@@ -392,13 +398,16 @@ inline void OnTimer(HWND hwnd, UINT id)
     }
 }
 
-INT_PTR CALLBACK DialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+// the dialog procedure
+INT_PTR CALLBACK
+DialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch(uMsg)
     {
         HANDLE_MSG(hwnd, WM_INITDIALOG, OnInitDialog);
         HANDLE_MSG(hwnd, WM_COMMAND, OnCommand);
         HANDLE_MSG(hwnd, WM_CTLCOLORDLG, OnCtlColor);
+        HANDLE_MSG(hwnd, WM_CTLCOLORSTATIC, OnCtlColor);
         HANDLE_MSG(hwnd, WM_TIMER, OnTimer);
     }
     return 0;
