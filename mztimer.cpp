@@ -126,7 +126,7 @@ VOID Update(HWND hwnd)
     }
 }
 
-VOID SetReadOnly(BOOL fReadOnly)
+inline VOID SetReadOnly(BOOL fReadOnly)
 {
     SendMessage(s_hEdt1, EM_SETREADONLY, fReadOnly, 0);
     SendMessage(s_hEdt2, EM_SETREADONLY, fReadOnly, 0);
