@@ -418,7 +418,7 @@ WinMain(HINSTANCE   hInstance,
     if (QueryPerformanceFrequency(&s_freq))
     {
         // show the main window
-        DialogBox(hInstance, MAKEINTRESOURCE(1), NULL, DialogProc);
+        DialogBox(hInstance, MAKEINTRESOURCE(1), NULL, reinterpret_cast<DLGPROC>(DialogProc));
     }
     else
     {
