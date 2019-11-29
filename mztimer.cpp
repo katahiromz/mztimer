@@ -34,6 +34,7 @@ static DWORD s_min;     // minutes
 static DWORD s_sec;     // seconds
 static DWORD s_msec;    // milliseconds
 
+// load a resource string
 inline LPTSTR LoadStringDx(INT ids)
 {
     static TCHAR sz[256];
@@ -41,18 +42,20 @@ inline LPTSTR LoadStringDx(INT ids)
     return sz;
 }
 
+// set 2-digit text to the window
 inline VOID SetWindowInt02(HWND hWnd, INT n)
 {
-    TCHAR szBuf[32];
+    TCHAR szBuf[8];
     szBuf[0] = TCHAR('0' + n / 10 % 10);
     szBuf[1] = TCHAR('0' + n % 10);
     szBuf[2] = 0;
     SetWindowText(hWnd, szBuf);
 }
 
+// set 3-digit text to the window
 inline VOID SetWindowInt03(HWND hWnd, INT n)
 {
-    TCHAR szBuf[32];
+    TCHAR szBuf[8];
     szBuf[0] = TCHAR('0' + n / 100 % 10);
     szBuf[1] = TCHAR('0' + n / 10 % 10);
     szBuf[2] = TCHAR('0' + n % 10);
@@ -63,39 +66,57 @@ inline VOID SetWindowInt03(HWND hWnd, INT n)
 #define TIMER_ID 999
 #define TIMER_INTERVAL 20
 
+
 inline VOID Alert(HWND hwnd)
 {
+    // stop the timer
     KillTimer(hwnd, TIMER_ID);
+
+    // set zero all
     SetWindowText(s_hEdt1, TEXT("0"));
     SetWindowText(s_hEdt2, TEXT("00"));
     SetWindowText(s_hEdt3, TEXT("00"));
     SetWindowText(s_hEdt4, TEXT("000"));
+
+    // play sound from file
     PlaySound(LoadStringDx(2), NULL, SND_ASYNC | SND_FILENAME | SND_LOOP);
+
+    // flash the window
     FlashWindow(hwnd, TRUE);
+
+    // show the window
     ShowWindow(hwnd, SW_SHOWNORMAL);
     SendMessage(hwnd, DM_REPOSITION, 0, 0);
-    s_fAlert = TRUE;
-    s_fFlash = TRUE;
+
+    s_fAlert = TRUE;    // alerting now!
+    s_fFlash = TRUE;    // flashing now!
+
+    // alerming by timer
     SetTimer(hwnd, TIMER_ID, TIMER_INTERVAL, NULL);
+
+    // redraw the window
     InvalidateRect(hwnd, NULL, TRUE);
 }
 
-VOID Update(HWND hwnd)
+VOID UpdateControls(HWND hwnd)
 {
     DWORD hour, min, sec, msec;
     DWORD count;
+    TCHAR szBuf[32];
 
+    // get the current count from performance counter
     QueryPerformanceCounter(&s_now);
+
     if (s_fStopWatch)
     {
+        // in stopwatch mode: update the dialog controls
         count = DWORD(((s_now.QuadPart - s_start.QuadPart) * 1000) / 
-                         s_freq.QuadPart + s_deltamsec.QuadPart);
+                      s_freq.QuadPart + s_deltamsec.QuadPart);
         hour = count / (1000 * 60 * 60);
         min = count / (1000 * 60) % 60;
         sec = count / 1000 % 60;
         msec = count % 1000;
 
-        TCHAR szBuf[32];
         _ultot(hour, szBuf, 10);
         SetWindowText(s_hEdt1, szBuf);
         SetWindowInt02(s_hEdt2, min);
@@ -104,6 +125,7 @@ VOID Update(HWND hwnd)
     }
     else
     {
+        // in timer mode: update the dialog controls
         if (s_stop.QuadPart * 1000 < s_now.QuadPart * 1000 - 
                                      s_deltamsec.QuadPart)
         {
@@ -111,14 +133,14 @@ VOID Update(HWND hwnd)
             return;
         }
         count = DWORD(((s_stop.QuadPart - s_now.QuadPart) * 1000 + 
-                          s_deltamsec.QuadPart) / s_freq.QuadPart);
+                       s_deltamsec.QuadPart) / s_freq.QuadPart);
         hour = count / (1000 * 60 * 60);
         min = count / (1000 * 60) % 60;
         sec = count / 1000 % 60;
         msec = count % 1000;
 
-        TCHAR szBuf[32];
         _ultot(hour, szBuf, 10);
+
         SetWindowText(s_hEdt1, szBuf);
         SetWindowInt02(s_hEdt2, min);
         SetWindowInt02(s_hEdt3, sec);
@@ -128,10 +150,13 @@ VOID Update(HWND hwnd)
 
 inline VOID SetReadOnly(BOOL fReadOnly)
 {
+    // make the EDIT controls (text boxes) read-only or not
     SendMessage(s_hEdt1, EM_SETREADONLY, fReadOnly, 0);
     SendMessage(s_hEdt2, EM_SETREADONLY, fReadOnly, 0);
     SendMessage(s_hEdt3, EM_SETREADONLY, fReadOnly, 0);
     SendMessage(s_hEdt4, EM_SETREADONLY, fReadOnly, 0);
+
+    // enable/disable the EDIT controls
     EnableWindow(GetDlgItem(g_hMainWnd, 1000), !fReadOnly);
     EnableWindow(GetDlgItem(g_hMainWnd, 1001), !fReadOnly);
     EnableWindow(GetDlgItem(g_hMainWnd, 1002), !fReadOnly);
@@ -141,15 +166,20 @@ inline VOID SetReadOnly(BOOL fReadOnly)
 
 inline BOOL OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 {
+    // get the window handles
     g_hMainWnd = hwnd;
     s_hEdt1 = GetDlgItem(hwnd, edt1);
     s_hEdt2 = GetDlgItem(hwnd, edt2);
     s_hEdt3 = GetDlgItem(hwnd, edt3);
     s_hEdt4 = GetDlgItem(hwnd, edt4);
+
+    // set up-down control ranges
     SendDlgItemMessage(hwnd, 1000, UDM_SETRANGE, 0, MAKELPARAM(99, 0));
     SendDlgItemMessage(hwnd, 1001, UDM_SETRANGE, 0, MAKELPARAM(99, 0));
     SendDlgItemMessage(hwnd, 1002, UDM_SETRANGE, 0, MAKELPARAM(99, 0));
     SendDlgItemMessage(hwnd, 1003, UDM_SETRANGE, 0, MAKELPARAM(999, 0));
+
+    // load icons
     HICON hIcon = LoadIcon(g_hInstance, MAKEINTRESOURCE(1));
     HICON hIconSmall = reinterpret_cast<HICON>(LoadImage(
         g_hInstance, 
@@ -158,10 +188,17 @@ inline BOOL OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
         GetSystemMetrics(SM_CXSMICON), 
         GetSystemMetrics(SM_CYSMICON),
         NULL));
+
+    // set icons
     SendMessage(hwnd, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(hIcon));
     SendMessage(hwnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(hIconSmall));
+
+    // create a red brush
     s_hbrRed = CreateSolidBrush(RED_COLOR);
+
+    // not running
     s_fRunning = FALSE;
+
     return TRUE;
 }
 
@@ -172,13 +209,16 @@ inline void OnPsh1(HWND hwnd)
 
     if (!s_fRunning)
     {
+        // start!
         QueryPerformanceCounter(&s_start);
+
         if (s_fStopped)
         {
             hour = GetDlgItemInt(hwnd, edt1, NULL, FALSE);
             min = GetDlgItemInt(hwnd, edt2, NULL, FALSE);
             sec = GetDlgItemInt(hwnd, edt3, NULL, FALSE);
             msec = GetDlgItemInt(hwnd, edt4, NULL, FALSE);
+
             s_deltamsec.QuadPart = ((hour * 60 + min) * 60 + sec);
             s_deltamsec.QuadPart *= 1000;
             s_deltamsec.QuadPart += msec;
@@ -187,6 +227,8 @@ inline void OnPsh1(HWND hwnd)
         {
             s_deltamsec.QuadPart = 0;
         }
+
+        // enter the stopwatch mode if necessary
         if (!s_fStopWatch)
         {
             if (GetDlgItemInt(hwnd, edt1, NULL, FALSE) == 0 &&
@@ -197,12 +239,15 @@ inline void OnPsh1(HWND hwnd)
                 s_fStopWatch = TRUE;
             }
         }
+
         if (!s_fStopWatch)
         {
+            // if not stopwatch mode, get the time to be stopped
             hour = GetDlgItemInt(hwnd, edt1, NULL, FALSE);
             min = GetDlgItemInt(hwnd, edt2, NULL, FALSE);
             sec = GetDlgItemInt(hwnd, edt3, NULL, FALSE);
             msec = GetDlgItemInt(hwnd, edt4, NULL, FALSE);
+
             li.QuadPart = ((hour * 60 + min) * 60 + sec);
             li.QuadPart *= 1000;
             li.QuadPart += msec;
@@ -210,46 +255,60 @@ inline void OnPsh1(HWND hwnd)
                               li.QuadPart * s_freq.QuadPart / 1000;
             if (!s_fStopped)
             {
+                // remember the values
                 s_hour = hour;
                 s_min = min;
                 s_sec = sec;
                 s_msec = msec;
             }
         }
-        s_fRunning = TRUE;
-        SetReadOnly(TRUE);
-        MessageBeep(0xFFFFFFFF);
-        SetTimer(hwnd, TIMER_ID, 90, NULL);
+
+        // start!
+        s_fRunning = TRUE;          // now running
+        SetReadOnly(TRUE);          // set read-only
+        MessageBeep(0xFFFFFFFF);    // ring the bell
+        SetTimer(hwnd, TIMER_ID, TIMER_INTERVAL, NULL);
     }
 }
 
 inline void OnPsh2(HWND hwnd)
 {
-    MessageBeep(0xFFFFFFFF);
+    MessageBeep(0xFFFFFFFF);    // ring the bell
+
     if (s_fRunning)
     {
-        KillTimer(hwnd, TIMER_ID);
-        Update(hwnd);
-        SetReadOnly(FALSE);
+        // stop!
+        KillTimer(hwnd, TIMER_ID);  // stop the timer
+        UpdateControls(hwnd);       // update controls
+        SetReadOnly(FALSE);         // non-read-only
+
         if (!s_fStopWatch && s_fAlert)
         {
+            // in timer mode: reset the values in the memory
             SetDlgItemInt(hwnd, edt1, s_hour, FALSE);
             SetDlgItemInt(hwnd, edt2, s_min, FALSE);
             SetDlgItemInt(hwnd, edt3, s_sec, FALSE);
             SetDlgItemInt(hwnd, edt4, s_msec, FALSE);
         }
+
+        // stop!
         s_fRunning = FALSE;
         s_fStopped = TRUE;
     }
     else
     {
+        // reset!
         SetWindowText(s_hEdt1, TEXT("0"));
         SetWindowText(s_hEdt2, TEXT("00"));
         SetWindowText(s_hEdt3, TEXT("00"));
         SetWindowText(s_hEdt4, TEXT("000"));
+
+        // enter the stopwatch mode
         s_fStopWatch = TRUE;
         s_fStopped = FALSE;
     }
+
+    // redraw the window
     InvalidateRect(hwnd, NULL, TRUE);
     s_fAlert = FALSE;
     KillTimer(hwnd, TIMER_ID);
@@ -258,8 +317,10 @@ inline void OnPsh2(HWND hwnd)
 
 inline void OnEdt1to4(HWND hwnd, UINT codeNotify)
 {
+    // if the text box is changed
     if (!s_fRunning && codeNotify == EN_CHANGE)
     {
+        // enter the timer mode
         s_fStopWatch = FALSE;
         s_fStopped = FALSE;
     }
@@ -269,22 +330,22 @@ inline void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 {
     switch (id)
     {
-    case psh1:
+    case psh1:  // start
         OnPsh1(hwnd);
         break;
 
-    case psh2:
+    case psh2:  // stop/reset
         OnPsh2(hwnd);
         break;
 
-    case edt1:
-    case edt2:
-    case edt3:
-    case edt4:
+    case edt1:  // hour
+    case edt2:  // min
+    case edt3:  // sec
+    case edt4:  // msec
         OnEdt1to4(hwnd, codeNotify);
         break;
 
-    case IDCANCEL:
+    case IDCANCEL:  // cancel
         EndDialog(hwnd, id);
         break;
     }
@@ -292,6 +353,7 @@ inline void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 
 inline HBRUSH OnCtlColor(HWND hwnd, HDC hdc, HWND hwndChild, int type)
 {
+    // show the colors!
     if (s_fAlert && s_fFlash)
     {
         SetTextColor(hdc, BLACK_COLOR);
@@ -305,11 +367,15 @@ inline void OnTimer(HWND hwnd, UINT id)
 {
     if (!s_fAlert)
     {
-        Update(hwnd);
+        // update the controls
+        UpdateControls(hwnd);
     }
     else
     {
+        // flash!
         s_fFlash = !s_fFlash;
+
+        // redraw the window
         InvalidateRect(hwnd, NULL, TRUE);
     }
 }
@@ -326,6 +392,7 @@ INT_PTR CALLBACK DialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
+// the main function of windows application
 extern "C"
 INT WINAPI
 WinMain(HINSTANCE   hInstance,
@@ -338,10 +405,12 @@ WinMain(HINSTANCE   hInstance,
 
     if (QueryPerformanceFrequency(&s_freq))
     {
+        // show the main window
         DialogBox(hInstance, MAKEINTRESOURCE(1), NULL, DialogProc);
     }
     else
     {
+        // performance counter is not available
         MessageBox(NULL, LoadStringDx(1), NULL, MB_ICONERROR);
     }
 
